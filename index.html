@@ -1433,172 +1433,56 @@
                 mosqueCounts: mosqueCounts
             };
         }
+        
+        // ✅ ✅ ✅ ✅ دالة جديدة: حساب الصلوات حتى اليوم الحالي في الأسبوع الحالي (للمقارنة)
+        function calculateCurrentWeekUntilTodayForComparison() {
+            let prayers = 0;
+            
+            try {
+                const today = new Date();
+                const currentWeek = getWeekNumber(today);
+                const currentYear = today.getFullYear();
                 
-        // ==============================
-// ✅ دالة جديدة: حساب الأسبوع الماضي حتى نفس اليوم
-// مثال: إذا اليوم الثلاثاء، نحسب الأسبوع الماضي حتى الثلاثاء
-// ==============================
-function calculateLastWeekUntilSameDay() {
-    let prayers = 0;
-    
-    try {
-        const today = new Date();
-        const currentDayOfWeek = today.getDay(); // 0 = الأحد
-        
-        // حساب الأسبوع الماضي
-        const lastWeekYear = currentViewWeek === 1 ? currentViewYear - 1 : currentViewYear;
-        const lastWeek = currentViewWeek === 1 ? 52 : currentViewWeek - 1;
-        
-        // بداية الأسبوع الماضي
-        const lastWeekStartDate = getDateOfWeek(lastWeek, lastWeekYear);
-        
-        // نفس اليوم من الأسبوع الماضي
-        const lastWeekSameDay = new Date(lastWeekStartDate);
-        lastWeekSameDay.setDate(lastWeekStartDate.getDate() + currentDayOfWeek);
-        lastWeekSameDay.setHours(23, 59, 59, 999);
-        
-        // حساب الصلوات من بداية الأسبوع الماضي حتى نفس اليوم
-        for (const date in prayerData.history) {
-            const dateObj = new Date(date);
-            if (dateObj >= lastWeekStartDate && dateObj <= lastWeekSameDay) {
-                const dayData = prayerData.history[date];
-                for (const prayer in dayData.prayers) {
-                    if (dayData.prayers[prayer].checked && dayData.prayers[prayer].mosque) {
-                        prayers++;
+                // فقط إذا كان الأسبوع المعروض هو الأسبوع الحالي
+                if (currentViewWeek !== currentWeek || currentViewYear !== currentYear) {
+                    return 0;
+                }
+                
+                const startDate = getDateOfWeek(currentWeek, currentYear);
+                const currentDayOfWeek = today.getDay(); // 0 = الأحد
+                const endDate = new Date(startDate);
+                endDate.setDate(startDate.getDate() + currentDayOfWeek);
+                endDate.setHours(23, 59, 59, 999);
+                
+                // حساب من البيانات التاريخية
+                for (const date in prayerData.history) {
+                    const dateObj = new Date(date);
+                    if (dateObj >= startDate && dateObj <= endDate) {
+                        const dayData = prayerData.history[date];
+                        for (const prayer in dayData.prayers) {
+                            if (dayData.prayers[prayer].checked && dayData.prayers[prayer].mosque) {
+                                prayers++;
+                            }
+                        }
                     }
                 }
-            }
-        }
-    } catch (error) {
-        console.error('❌ خطأ في حساب الأسبوع الماضي حتى نفس اليوم:', error);
-    }
-    
-    return prayers;
-}
-
-// ==============================
-// ✅ دالة جديدة: حساب الأسبوع الحالي حتى اليوم (يوم بيوم)
-// ==============================
-function calculateCurrentWeekUntilTodayFixed() {
-    let prayers = 0;
-    
-    try {
-        const today = new Date();
-        const currentWeek = getWeekNumber(today);
-        const currentYear = today.getFullYear();
-        const currentDayOfWeek = today.getDay();
-        
-        // فقط إذا كان الأسبوع المعروض هو الأسبوع الحالي
-        if (currentViewWeek !== currentWeek || currentViewYear !== currentYear) {
-            return 0;
-        }
-        
-        const startDate = getDateOfWeek(currentWeek, currentYear);
-        const endDate = new Date(startDate);
-        endDate.setDate(startDate.getDate() + currentDayOfWeek);
-        endDate.setHours(23, 59, 59, 999);
-        
-        // حساب من البيانات التاريخية
-        for (const date in prayerData.history) {
-            const dateObj = new Date(date);
-            if (dateObj >= startDate && dateObj <= endDate) {
-                const dayData = prayerData.history[date];
-                for (const prayer in dayData.prayers) {
-                    if (dayData.prayers[prayer].checked && dayData.prayers[prayer].mosque) {
-                        prayers++;
+                
+                // ✅ ✅ ✅ ✅ إضافة بيانات اليوم الحالي غير المحفوظة
+                const todayDateStr = formatLocalDate(today);
+                if (!prayerData.history[todayDateStr]) {
+                    for (const prayer in prayerData.daily.prayers) {
+                        if (prayerData.daily.prayers[prayer].checked && prayerData.daily.prayers[prayer].mosque) {
+                            prayers++;
+                        }
                     }
                 }
+            } catch (error) {
+                console.error('❌ خطأ في حساب الأسبوع الحالي حتى اليوم:', error);
             }
+            
+            return prayers;
         }
         
-        // إضافة بيانات اليوم الحالي غير المحفوظة
-        const todayDateStr = formatLocalDate(today);
-        if (!prayerData.history[todayDateStr]) {
-            for (const prayer in prayerData.daily.prayers) {
-                if (prayerData.daily.prayers[prayer].checked && prayerData.daily.prayers[prayer].mosque) {
-                    prayers++;
-                }
-            }
-        }
-    } catch (error) {
-        console.error('❌ خطأ في حساب الأسبوع الحالي حتى اليوم:', error);
-    }
-    
-    return prayers;
-}
-
-// ==============================
-// ✅ ✅ ✅ دالة تحديث المقارنات المصلحة (يوم بيوم حقيقي) ✅ ✅ ✅
-// ==============================
-function updateComparisons() {
-    try {
-        const today = new Date();
-        const currentDay = today.getDate();
-        const currentMonth = today.getMonth() + 1;
-        const currentYear = today.getFullYear();
-        const currentWeek = getWeekNumber(today);
-        const currentDayOfWeek = today.getDay(); // 0 = الأحد
-        const dayNames = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-        const currentDayName = dayNames[currentDayOfWeek];
-        
-        // ========== الأسبوع ==========
-        // ✅ الأسبوع الحالي حتى اليوم (يوم بيوم)
-        const currentWeekPrayersUntilToday = calculateCurrentWeekUntilTodayFixed();
-        
-        // ✅ الأسبوع الماضي حتى نفس اليوم (يوم بيوم)
-        const lastWeekPrayersUntilSameDay = calculateLastWeekUntilSameDay();
-        
-        // ✅ تحديد الأيام المنقضية من الأسبوع
-        const daysPassedInWeek = currentDayOfWeek + 1; // +1 لأن الأحد = اليوم 0
-        
-        // تحديث عرض الأسبوع
-        document.getElementById('currentWeekPrayers').textContent = currentWeekPrayersUntilToday;
-        document.getElementById('lastWeekPrayers').textContent = lastWeekPrayersUntilSameDay;
-        document.getElementById('currentWeekInfo').textContent = `حتى ${currentDayName} (${daysPassedInWeek} أيام)`;
-        document.getElementById('lastWeekInfo').textContent = `حتى ${currentDayName} (${daysPassedInWeek} أيام)`;
-        
-        const weekDiff = currentWeekPrayersUntilToday - lastWeekPrayersUntilSameDay;
-        updateComparisonDisplay('weekComparison', 'weekComparisonDetails', weekDiff, 'صلاة', 
-                              `مقارنة يوم بيوم: ${daysPassedInWeek} أيام من الأسبوع`);
-        
-        // ========== الشهر ==========
-        // (نفس الكود السابق للشهر)
-        const currentMonthStats = calculateMonthlyStats();
-        const currentMonthPrayersSoFar = currentMonthStats.prayers;
-        
-        const lastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
-        const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
-        const lastMonthFullPrayers = calculateFullMonthStatsFixed(lastMonth, lastMonthYear);
-        
-        document.getElementById('currentMonthPrayers').textContent = currentMonthPrayersSoFar;
-        document.getElementById('lastMonthPrayers').textContent = lastMonthFullPrayers;
-        document.getElementById('currentMonthInfo').textContent = `حتى اليوم ${currentDay}`;
-        document.getElementById('lastMonthInfo').textContent = 'شهر كامل';
-        
-        const monthDiff = currentMonthPrayersSoFar - lastMonthFullPrayers;
-        updateComparisonDisplay('monthComparison', 'monthComparisonDetails', monthDiff, 'صلاة', 
-                              'عداد تنازلي: تحتاج إلى تخطي إجمالي الشهر الماضي');
-        
-        // ========== السنة ==========
-        // (نفس الكود السابق للسنة)
-        const currentYearStats = calculateYearlyStats();
-        const currentYearPrayersSoFar = currentYearStats.prayers;
-        
-        const lastYearFullPrayers = calculateFullYearStatsFixed(currentYear - 1);
-        
-        document.getElementById('currentYearPrayers').textContent = currentYearPrayersSoFar;
-        document.getElementById('lastYearPrayers').textContent = lastYearFullPrayers;
-        document.getElementById('currentYearInfo').textContent = 'حتى الآن';
-        document.getElementById('lastYearInfo').textContent = 'سنة كاملة';
-        
-        const yearDiff = currentYearPrayersSoFar - lastYearFullPrayers;
-        updateComparisonDisplay('yearComparison', 'yearComparisonDetails', yearDiff, 'صلاة', 
-                              'عداد تنازلي: تحتاج إلى تخطي إجمالي السنة الماضية');
-        
-    } catch (error) {
-        console.error('❌ خطأ في تحديث المقارنات:', error);
-    }
-    }
         // حساب إحصائيات الشهر
         function calculateMonthlyStats() {
             let monthlyPrayers = 0;
@@ -2584,4 +2468,4 @@ function updateComparisons() {
         document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
-</html>
+    </html>
